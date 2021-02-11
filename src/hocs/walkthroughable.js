@@ -1,13 +1,14 @@
 // @flow
 import React from 'react';
 
-type Props = {
-  copilot: Object,
-};
+const walkthroughable = (Target) => {
+  return class WrappedComponent extends React.Component {
+    render() {
+      var { copilot, ...props } = this.props;
 
-const walkthroughable =
-  WrappedComponent =>
-    ({ copilot, ...props }: Props) =>
-      <WrappedComponent {...copilot} {...props} />;
+      return (<Target {...copilot} {...props} />);
+    }
+  }
+}
 
 export default walkthroughable;

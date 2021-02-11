@@ -1,58 +1,41 @@
 // @flow
 import React, { Component } from 'react';
-
-import { View, Animated } from 'react-native';
+import PropTypes from 'prop-types';
+import { View, Animated, I18nManager, TouchableOpacity } from 'react-native';
 import styles from './style';
 
-import type { valueXY } from '../types';
+const rtl = I18nManager.isRTL;
+const start = rtl ? 'right' : 'left';
+const end = rtl ? 'left' : 'right';
 
-type Props = {
-  size: valueXY,
-  position: valueXY,
-  layout: {
-    width: number,
-    height: number,
-  },
-  style: object | number | Array,
-  easing: func,
-  animationDuration: number,
-  animated: boolean,
-  backdropColor: string,
-  onClick?: () => void,
-};
+class ViewMask extends Component {
+  static contextTypes = {
+    _copilot: PropTypes.object,
+  }
 
-type State = {
-  size: Animated.ValueXY,
-  position: Animated.ValueXY,
-  canvasSize: valueXY,
-};
-
-class ViewMask extends Component<Props, State> {
   state = {
     size: new Animated.ValueXY({ x: 0, y: 0 }),
     position: new Animated.ValueXY({ x: 0, y: 0 }),
   };
 
-  componentDidUpdate(prevProps) {
-    if (prevProps.position !== this.props.position || prevProps.size !== this.props.size) {
-      this.animate(this.props.size, this.props.position);
+  componentWillReceiveProps(nextProps) {
+    if (this.props.position !== nextProps.position || this.props.size !== nextProps.size) {
+      this.animate(nextProps.size, nextProps.position);
     }
   }
 
-  animate = (size: valueXY = this.props.size, position: valueXY = this.props.position): void => {
+  animate = (size = this.props.size, position = this.props.position) => {
     if (this.state.animated) {
       Animated.parallel([
         Animated.timing(this.state.size, {
           toValue: size,
           duration: this.props.animationDuration,
           easing: this.props.easing,
-          useNativeDriver: false,
         }),
         Animated.timing(this.state.position, {
           toValue: position,
           duration: this.props.animationDuration,
           easing: this.props.easing,
-          useNativeDriver: false,
         }),
       ]).start();
     } else {
@@ -63,6 +46,7 @@ class ViewMask extends Component<Props, State> {
   }
 
   render() {
+    const { onPress } = this.context._copilot.getCurrentStep().target.props; // @symbolic
     const { size, position } = this.state;
     const width = this.props.layout ? this.props.layout.width : 500;
     const height = this.props.layout ? this.props.layout.height : 500;
@@ -77,21 +61,19 @@ class ViewMask extends Component<Props, State> {
     );
 
     return (
-      <View style={this.props.style} onStartShouldSetResponder={this.props.onClick}>
+      <View style={this.props.style}>
         <Animated.View
           style={[
             styles.overlayRectangle,
             {
-              right: leftOverlayRight,
-              backgroundColor: this.props.backdropColor,
+              [end]: leftOverlayRight,
             }]}
         />
         <Animated.View
           style={[
             styles.overlayRectangle,
             {
-              left: rightOverlayLeft,
-              backgroundColor: this.props.backdropColor,
+              [start]: rightOverlayLeft,
             }]}
         />
         <Animated.View
@@ -99,9 +81,8 @@ class ViewMask extends Component<Props, State> {
             styles.overlayRectangle,
             {
               top: bottomOverlayTopBoundary,
-              left: verticalOverlayLeftBoundary,
-              right: verticalOverlayRightBoundary,
-              backgroundColor: this.props.backdropColor,
+              [start]: verticalOverlayLeftBoundary,
+              [end]: verticalOverlayRightBoundary,
             },
           ]}
         />
@@ -110,12 +91,26 @@ class ViewMask extends Component<Props, State> {
             styles.overlayRectangle,
             {
               bottom: topOverlayBottomBoundary,
-              left: verticalOverlayLeftBoundary,
-              right: verticalOverlayRightBoundary,
-              backgroundColor: this.props.backdropColor,
+              [start]: verticalOverlayLeftBoundary,
+              [end]: verticalOverlayRightBoundary,
             },
           ]}
         />
+        {onPress && (<TouchableOpacity
+          style={{
+            backgroundColor: 'transparent',
+            [start]: this.props.position.x,
+            [end]: (this.props.layout.width - (this.props.size.x + this.props.position.x)),
+            top: this.props.position.y,
+            width: this.props.size.x,
+            height: this.props.size.y,
+          }}
+          onPress={() => {
+            onPress();
+
+            this.props.handleStop(); // @symbolic
+          }}
+        />)}
       </View>
     );
   }

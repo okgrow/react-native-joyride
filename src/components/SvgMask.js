@@ -1,44 +1,34 @@
 // @flow
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import {
   View,
   Animated,
   Easing,
   Dimensions,
+  I18nManager,
+  TouchableOpacity
 } from 'react-native';
 import Svg from 'react-native-svg';
 import AnimatedSvgPath from './AnimatedPath';
 
-import type { valueXY, svgMaskPath, Step } from '../types';
-
 const windowDimensions = Dimensions.get('window');
-const defaultSvgPath = ({ size, position, canvasSize }): string => `M0,0H${canvasSize.x}V${canvasSize.y}H0V0ZM${position.x._value},${position.y._value}H${position.x._value + size.x._value}V${position.y._value + size.y._value}H${position.x._value}V${position.y._value}Z`;
+const defaultSvgPath = ({ size, position, canvasSize }) => `M0,0H${canvasSize.x}V${canvasSize.y}H0V0ZM${position.x._value},${position.y._value}H${position.x._value + size.x._value}V${position.y._value + size.y._value}H${position.x._value}V${position.y._value}Z`;
 
-type Props = {
-  size: valueXY,
-  position: valueXY,
-  style: object | number | Array,
-  easing: func,
-  animationDuration: number,
-  animated: boolean,
-  backdropColor: string,
-  svgMaskPath?: svgMaskPath,
-  onClick?: () => void,
-  currentStep: Step
-};
+const rtl = I18nManager.isRTL;
+const start = rtl ? 'right' : 'left';
+const end = rtl ? 'left' : 'right';
 
-type State = {
-  size: Animated.ValueXY,
-  position: Animated.ValueXY,
-  canvasSize: ?valueXY,
-};
-
-class SvgMask extends Component<Props, State> {
+class SvgMask extends Component {
   static defaultProps = {
     animationDuration: 300,
     easing: Easing.linear,
     svgMaskPath: defaultSvgPath,
   };
+
+  static contextTypes = {
+    _copilot: PropTypes.object,
+  }
 
   constructor(props) {
     super(props);
@@ -61,8 +51,8 @@ class SvgMask extends Component<Props, State> {
     }
   }
 
-  animationListener = (): void => {
-    const d: string = this.props.svgMaskPath({
+  animationListener = () => {
+    const d = this.props.svgMaskPath({
       size: this.state.size,
       position: this.state.position,
       canvasSize: this.state.canvasSize,
@@ -73,7 +63,7 @@ class SvgMask extends Component<Props, State> {
     }
   };
 
-  animate = (size: valueXY = this.props.size, position: valueXY = this.props.position): void => {
+  animate = (size = this.props.size, position = this.props.position) => {
     if (this.props.animated) {
       Animated.parallel([
         Animated.timing(this.state.size, {
@@ -105,6 +95,8 @@ class SvgMask extends Component<Props, State> {
   }
 
   render() {
+    const { onPress } = this.context._copilot.getCurrentStep().target.props; // @symbolic
+
     return (
       <View
         style={this.props.style}
@@ -131,6 +123,24 @@ class SvgMask extends Component<Props, State> {
             )
             : null
         }
+        {onPress && (<TouchableOpacity
+          style={{
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderColor: 'red',
+            [start]: this.props.position.x,
+            [end]: (this.props.layout.width - (this.props.size.x + this.props.position.x)),
+            top: this.props.position.y,
+            width: this.props.size.x,
+            height: this.props.size.y,
+          }}
+          onPress={() => {
+            onPress();
+
+            this.props.handleStop(); // @symbolic
+          }}
+        />)}
       </View>
     );
   }
